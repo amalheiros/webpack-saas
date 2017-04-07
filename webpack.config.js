@@ -1,47 +1,81 @@
-var webpack = require('webpack');
+var webpack = require("webpack");
+var ExtractTextPlugin = require("extract-text-webpack-plugin");
 var OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+var cssnano = require('cssnano');
+const PROD = process.argv.indexOf('-p') !== -1;
 
-var PROD = JSON.parse(process.env.PROD_ENV || '0');
+console.log(PROD);
 
-module.exports = {
-
-    //define entry point
-    entry: './src/script-1.js',
-
-    //define output point
-    output: {
-        path: 'dist',
-        filename: PROD ? 'bundle.min.js' : 'bundle.js'
+const config = {
+    entry: {
+        app: "./src/script-1.js",
     },
-
-     module: {
+    output: {
+        filename: PROD ? "[name].min.js?[hash]-[chunkhash]" : "[name].js?[hash]-[chunkhash]",
+        chunkFilename: PROD ? "[name].min.js?[hash]-[chunkhash]" : "[name].js?[hash]-[chunkhash]",
+        path: __dirname + "/assets",
+        publicPath: "/assets/"
+    },
+    module: {
         loaders: [
             {
-                test: /\.js$/,
-                exclude: /(node_modules)/,
-                loader: 'babel-loader',
-                query: {
-                    presets: ['es2015']
-                }
+                test: /\.css$/,
+                
+                use: ExtractTextPlugin.extract({
+                    fallback: "style-loader",
+                    use: {
+                        loader: "css-loader",
+                        options: {
+                            sourceMap: false
+                        }
+                    },
+                    publicPath: "../"
+                })
             },
             {
-                test: /\.scss$/,
-                loader: 'style-loader!css-loader!sass-loader'
+                test: /\.png$/,
+                loader: "file-loader"
+            },
+            {
+                test: /\.(woff|woff2)$/,
+                use: ['url-loader'],
             }
-        ] //loaders
-    } //module
-    ,
-    plugins: PROD ? [
-        new webpack.optimize.UglifyJsPlugin({
-        compress: { warnings: false }
-    }),
-    new ExtractTextPlugin("styles.css"),
+        ],
+        rules: [
+            {
+                test: /\.scss$/,
+                loader: ExtractTextPlugin.extract({
+                    use: 'css-loader!sass-loader',
+                }),
+            }
+        ]
+    },
+    plugins: [
+        new ExtractTextPlugin({
+            filename: "css/[name].css?[hash]-[chunkhash]-[contenthash]-[name]",
+            disable: false,
+            allChunks: true
+        }),
         new OptimizeCssAssetsPlugin({
-        assetNameRegExp: /\.optimize\.css$/g,
-        cssProcessor: require('cssnano'),
-        cssProcessorOptions: { discardComments: {removeAll: true } },
-        canPrint: true
+            cssProcessor: cssnano,
+            cssProcessorOptions: { discardComments: { removeAll: true } },
+            canPrint: false
+        }),
+        new webpack.optimize.CommonsChunkPlugin({
+            name: "Commons",
+            filename: PROD ? "commons.min.js" : "commons.js"
         })
-    ] : []
-
+    ]
 };
+
+if(PROD){
+    config.plugins.push(
+        new webpack.optimize.UglifyJsPlugin({
+            compress: { 
+                warnings: false 
+            }
+        })
+    )
+}
+
+module.exports = config

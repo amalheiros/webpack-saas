@@ -1,0 +1,7 @@
+.intro-component {
+  padding: 20px;
+  background: #7777bb;
+  color: #fff;
+  font-family: arial; }
+  .intro-component h1 {
+    text-transform: uppercase; }
