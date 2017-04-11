@@ -1,26 +1,36 @@
-var webpack = require("webpack");
-var ExtractTextPlugin = require("extract-text-webpack-plugin");
-var OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
-var cssnano = require('cssnano');
-const PROD = process.argv.indexOf('-p') !== -1;
+const webpack = require("webpack");
+const CopyWebpackPlugin = require('copy-webpack-plugin')
+const ExtractTextPlugin = require("extract-text-webpack-plugin");
+const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const HtmlWebpackPlugin =  require('html-webpack-plugin');
+const cleanPlugin = require('clean-webpack-plugin');
+const cssnano = require('cssnano');
 
-console.log(PROD);
+const PROD = process.argv.indexOf('-p') !== -1;
 
 const config = {
     entry: {
-        app: "./src/script-1.js",
+        app: "./src/Index.js",
+        //angular: "./src/AngularDep.js",
+        //directives: './src/app/directives/Directives.js',
+        //controllers: './src/app/controllers/Controllers.js',
+        //services: './src/app/services/Services.js'
+
     },
     output: {
-        filename: PROD ? "[name].min.js?[hash]-[chunkhash]" : "[name].js?[hash]-[chunkhash]",
-        chunkFilename: PROD ? "[name].min.js?[hash]-[chunkhash]" : "[name].js?[hash]-[chunkhash]",
+        filename: PROD ? "scripts/[name].min.js?[hash]-[chunkhash]" : "scripts/[name].js?[hash]-[chunkhash]",
+        chunkFilename: PROD ? "scripts/[name].min.js?[hash]-[chunkhash]" : "scripts/[name].js?[hash]-[chunkhash]",
         path: __dirname + "/assets",
         publicPath: "/assets/"
+    },
+    devServer:{
+        port: 8080,
+        contentBase: __dirname + "/src/app/public/"
     },
     module: {
         loaders: [
             {
                 test: /\.css$/,
-                
                 use: ExtractTextPlugin.extract({
                     fallback: "style-loader",
                     use: {
@@ -51,6 +61,11 @@ const config = {
         ]
     },
     plugins: [
+        //new cleanPlugin(['assets']),
+        // new HtmlWebpackPlugin({
+        //     template: './src/app/public/index.html'
+        // }),
+        new webpack.HotModuleReplacementPlugin(),
         new ExtractTextPlugin({
             filename: "css/[name].css?[hash]-[chunkhash]-[contenthash]-[name]",
             disable: false,
@@ -63,8 +78,12 @@ const config = {
         }),
         new webpack.optimize.CommonsChunkPlugin({
             name: "Commons",
-            filename: PROD ? "commons.min.js" : "commons.js"
-        })
+            filename: PROD ? "scripts/commons.min.js" : "scripts/commons.js"
+        }),
+        new CopyWebpackPlugin([{
+            from: './src/app/public',
+            to: 'html/'
+        }])
     ]
 };
 

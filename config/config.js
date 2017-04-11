@@ -1,1 +1,0 @@
-var urlLogin = JSON.stringify(process.env.URL || 'http://localhost:8080/login')
