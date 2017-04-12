@@ -2,9 +2,10 @@ const webpack = require("webpack");
 const CopyWebpackPlugin = require('copy-webpack-plugin')
 const ExtractTextPlugin = require("extract-text-webpack-plugin");
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
-const HtmlWebpackPlugin =  require('html-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const cleanPlugin = require('clean-webpack-plugin');
 const cssnano = require('cssnano');
+const path = require('path')
 
 const PROD = process.argv.indexOf('-p') !== -1;
 
@@ -20,12 +21,13 @@ const config = {
     output: {
         filename: PROD ? "scripts/[name].min.js?[hash]-[chunkhash]" : "scripts/[name].js?[hash]-[chunkhash]",
         chunkFilename: PROD ? "scripts/[name].min.js?[hash]-[chunkhash]" : "scripts/[name].js?[hash]-[chunkhash]",
-        path: __dirname + "/assets",
-        publicPath: "/assets/"
+        path: path.resolve(__dirname,"/dist"),
+        publicPath: "/dist/"
     },
-    devServer:{
+    devServer: {
         port: 8080,
-        contentBase: __dirname + "/src/app/public/"
+        contentBase: __dirname + "/dist/",
+        historyApiFallback: true
     },
     module: {
         loaders: [
@@ -41,6 +43,11 @@ const config = {
                     },
                     publicPath: "../"
                 })
+            },
+            {
+                test: /\.js$/,
+                loader: 'babel',
+                exclude: /node_modules/
             },
             {
                 test: /\.png$/,
@@ -65,6 +72,12 @@ const config = {
         // new HtmlWebpackPlugin({
         //     template: './src/app/public/index.html'
         // }),
+        new HtmlWebpackPlugin({
+            template: './src/app/public/index.html',
+            inject: 'body',
+            hash: true,
+            filename: 'html/index.html'
+        }),
         new webpack.HotModuleReplacementPlugin(),
         new ExtractTextPlugin({
             filename: "css/[name].css?[hash]-[chunkhash]-[contenthash]-[name]",
@@ -87,11 +100,11 @@ const config = {
     ]
 };
 
-if(PROD){
+if (PROD) {
     config.plugins.push(
         new webpack.optimize.UglifyJsPlugin({
-            compress: { 
-                warnings: false 
+            compress: {
+                warnings: false
             }
         })
     )
