@@ -1,113 +1,147 @@
-const webpack = require("webpack");
-const CopyWebpackPlugin = require('copy-webpack-plugin')
-const ExtractTextPlugin = require("extract-text-webpack-plugin");
-const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const cleanPlugin = require('clean-webpack-plugin');
-const cssnano = require('cssnano');
-const path = require('path')
+var path = require('path');
+var webpack = require('webpack');
 
-const PROD = process.argv.indexOf('-p') !== -1;
+var CommonsChunkPlugin = webpack.optimize.CommonsChunkPlugin;
+var autoprefixer = require('autoprefixer');
+var HtmlWebpackPlugin = require('html-webpack-plugin');
+var ExtractTextPlugin = require('extract-text-webpack-plugin');
+var CopyWebpackPlugin = require('copy-webpack-plugin');
+var OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+var cssnano = require('cssnano');
 
-const config = {
-    entry: {
-        app: "./src/Index.js",
-        //angular: "./src/AngularDep.js",
-        //directives: './src/app/directives/Directives.js',
-        //controllers: './src/app/controllers/Controllers.js',
-        //services: './src/app/services/Services.js'
+var ENV = process.env.npm_lifecycle_event;
+var isTestWatch = ENV === 'test-watch';
+var isTest = ENV === 'test' || isTestWatch;
+var isProd = ENV === 'build';
 
-    },
-    output: {
-        filename: PROD ? "scripts/[name].min.js?[hash]-[chunkhash]" : "scripts/[name].js?[hash]-[chunkhash]",
-        chunkFilename: PROD ? "scripts/[name].min.js?[hash]-[chunkhash]" : "scripts/[name].js?[hash]-[chunkhash]",
-        path: path.resolve(__dirname,"/dist"),
-        publicPath: "/dist/"
-    },
-    devServer: {
-        port: 8080,
-        contentBase: __dirname + "/dist/",
-        historyApiFallback: true
-    },
-    module: {
-        loaders: [
-            {
-                test: /\.css$/,
-                use: ExtractTextPlugin.extract({
-                    fallback: "style-loader",
-                    use: {
-                        loader: "css-loader",
-                        options: {
-                            sourceMap: false
-                        }
-                    },
-                    publicPath: "../"
-                })
-            },
-            {
-                test: /\.js$/,
-                loader: 'babel',
-                exclude: /node_modules/
-            },
-            {
-                test: /\.png$/,
-                loader: "file-loader"
-            },
-            {
-                test: /\.(woff|woff2)$/,
-                use: ['url-loader'],
+module.exports = function makeWebpackConfig() {
+  var config = {};
+  if (isProd) {
+    config.devtool = 'source-map';
+  }
+  else if (isTest) {
+    config.devtool = 'inline-source-map';
+  }
+  else {
+    config.devtool = 'eval-source-map';
+  }
+
+  if (!isTest) {
+    config.entry = {
+      'app': './src/app/app.js'
+    };
+  }
+
+  config.output = isTest ? {} : {
+    path: root('dist'),
+    publicPath: isProd ? '/' : 'http://localhost:8080/',
+    filename: isProd ? 'js/[name].[hash].js' : 'js/[name].js',
+    chunkFilename: isProd ? '[id].[hash].chunk.js' : '[id].chunk.js'
+  };
+
+  config.resolve = {
+    extensions: ['.js', '.json', '.css', '.scss', '.html'],
+  };
+
+  var atlOptions = '';
+  if (isTest && !isTestWatch) {
+    atlOptions = 'inlineSourceMap=true&sourceMap=false';
+  }
+  config.module = {
+    loaders: [
+      {
+        test: /\.css$/,
+        use: ExtractTextPlugin.extract({
+          fallback: "style-loader",
+          use: {
+            loader: "css-loader",
+            options: {
+              sourceMap: false
             }
-        ],
-        rules: [
-            {
-                test: /\.scss$/,
-                loader: ExtractTextPlugin.extract({
-                    use: 'css-loader!sass-loader',
-                }),
-            }
-        ]
-    },
-    plugins: [
-        //new cleanPlugin(['assets']),
-        // new HtmlWebpackPlugin({
-        //     template: './src/app/public/index.html'
-        // }),
-        new HtmlWebpackPlugin({
-            template: './src/app/public/index.html',
-            inject: 'body',
-            hash: true,
-            filename: 'html/index.html'
-        }),
-        new webpack.HotModuleReplacementPlugin(),
-        new ExtractTextPlugin({
-            filename: "css/[name].css?[hash]-[chunkhash]-[contenthash]-[name]",
-            disable: false,
-            allChunks: true
-        }),
-        new OptimizeCssAssetsPlugin({
-            cssProcessor: cssnano,
-            cssProcessorOptions: { discardComments: { removeAll: true } },
-            canPrint: false
-        }),
-        new webpack.optimize.CommonsChunkPlugin({
-            name: "Commons",
-            filename: PROD ? "scripts/commons.min.js" : "scripts/commons.js"
-        }),
-        new CopyWebpackPlugin([{
-            from: './src/app/public',
-            to: 'html/'
-        }])
-    ]
-};
-
-if (PROD) {
-    config.plugins.push(
-        new webpack.optimize.UglifyJsPlugin({
-            compress: {
-                warnings: false
-            }
+          },
+          publicPath: "../"
         })
-    )
-}
+      }],
+    rules: [
+      {
+        test: /\.(scss|sass)$/,
+        loader: ExtractTextPlugin.extract({
+          use: 'css-loader!sass-loader',
+        }),
+      },
+      {
+        test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)(\?v=[0-9]\.[0-9]\.[0-9])?$/,
+        loader: 'file-loader?name=fonts/[name].[hash].[ext]?'
+      },
+      { test: /\.json$/, loader: 'json-loader' },
+      { test: /\.html$/, loader: 'raw-loader', exclude: root('src', 'public') }
+    ]
+  };
+  config.plugins = [
+    new webpack.DefinePlugin({
+      'process.env': {
+        ENV: JSON.stringify(ENV)
+      }
+    }),
+    new HtmlWebpackPlugin({
+      template: './src/index.html',
+      inject: 'body',
+      hash: true,
+      filename: 'html/index.html'
+    }),
+    // new ExtractTextPlugin({
+    //   filename: "css/[name].css?[hash]-[chunkhash]-[contenthash]-[name]",
+    //   disable: false,
+    //   allChunks: true
+    // }),
+    new OptimizeCssAssetsPlugin({
+      cssProcessor: cssnano,
+      cssProcessorOptions: { discardComments: { removeAll: true } },
+      canPrint: false
+    }),
+    new webpack.LoaderOptionsPlugin({
+      options: {
+        tslint: {
+          emitErrors: false,
+          failOnHint: false
+        }
+      }
+    })
+  ];
 
-module.exports = config
+  if (!isTest && !isTestWatch) {
+    config.plugins.push(
+      new CommonsChunkPlugin({
+        name: ['vendor', 'polyfills']
+      }),
+      new HtmlWebpackPlugin({
+        template: './src/index.html',
+        chunksSortMode: 'dependency'
+      }),
+      new ExtractTextPlugin({ filename: 'css/[name].[hash].css' })
+    );
+  }
+
+  if (isProd) {
+    config.plugins.push(
+      new webpack.NoEmitOnErrorsPlugin(),
+      new webpack.optimize.UglifyJsPlugin({ sourceMap: true, mangle: { keep_fnames: true } }),
+      new CopyWebpackPlugin([{
+        from: root('src/public')
+      }])
+    );
+  }
+  config.devServer = {
+    contentBase: './src/public',
+    historyApiFallback: true,
+    quiet: true,
+    stats: 'minimal'
+  };
+
+  return config;
+}();
+
+function root(args) {
+  args = Array.prototype.slice.call(arguments, 0);
+  return path.join.apply(path, [__dirname].concat(args));
+}
