@@ -2,7 +2,7 @@ import template from './firstAccess.html';
 import './firstAccess.scss';
 import firstAccessCtrl from './firstAccessController';
 
-export default /*@ngInject*/ function($stateProvider, $urlRouterProvider) {
+export default /*@ngInject*/ function($stateProvider, $urlRouterProvider, $locationProvider) {
     $urlRouterProvider.otherwise('/');
 
     $stateProvider.state('firstAccess', {
@@ -15,4 +15,6 @@ export default /*@ngInject*/ function($stateProvider, $urlRouterProvider) {
             }
         }
     });
+
+    $locationProvider.html5Mode(true);
 }
